@@ -55,6 +55,7 @@ jobs:
         printf "Installing ccache\n"
         brew install ccache
         export PATH="/usr/local/opt/ccache/libexec:$PATH"
+        export CCACHE_EXEC=$(command -v ccache)
         USE_CCACHE=1 CCACHE_COMPRESS=1 CCACHE_COMPRESSLEVEL=6 CCACHE_DIR=/Volumes/android/.ccache ccache -M 10G
         printf "Work begins here\n\n"
         cd /Volumes/android
