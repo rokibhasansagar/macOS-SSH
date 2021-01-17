@@ -23,6 +23,51 @@ jobs:
         git config --global color.ui true
         git config --global credential.helper store
         echo "https://${GitHubName}:${{ secrets.GH_TOKEN }}@github.com" > ~/.git-credentials
+    - name: Configure for android builds
+      run: |
+        id
+        printf "Creating SPARSE FS\n"
+        sudo hdiutil create -type SPARSE -fs 'Case-sensitive Journaled HFS+' -size 220g ~/android.dmg.sparseimage
+        sudo hdiutil attach ~/android.dmg.sparseimage -mountpoint /Volumes/android
+        printf "Fixing Xcode and macOS-SDKs\n"
+        rm -f /Applications/Xcode.app 2>/dev/null
+        sudo xcode-select -s /Applications/Xcode_12.3.app/Contents/Developer
+        ln -s /Applications/Xcode_12.3.app /Applications/Xcode.app
+        cd /Applications/Xcode.app/Contents/Developer/Platforms/MacOSX.platform/Developer/SDKs
+        for i in 10 11 12 13 14 15; do
+          aria2c -x16 -s16 --console-log-level=warn --summary-interval=20 https://github.com/phracker/MacOSX-SDKs/releases/download/10.15/MacOSX10.$i.sdk.tar.xz
+          tar xJf MacOSX10.$i.sdk.tar.xz
+          rm -f MacOSX10.$i.sdk.tar.xz
+        done
+        printf "Installing Openjdk8\n"
+        brew install openjdk@8
+        sudo ln -sfn /usr/local/opt/openjdk@8/libexec/openjdk.jdk /Library/Java/JavaVirtualMachines/openjdk-8.jdk
+        export PATH="/usr/local/opt/openjdk@8/bin:$PATH"
+        # We are setting 12 gigabytes of ram for java heap
+        export JAVA_OPTS=" -Xmx12G "
+        printf "Building latest GNU Make\n"
+        mkdir -p ~/bin 2>/dev/null
+        wget -q https://ftp.gnu.org/gnu/make/make-4.3.tar.gz
+        tar xzf make-4.3.tar.gz && cd make-*/
+        ./configure && bash ./build.sh &>/dev/null && install ./make ~/bin/make
+        cd .. && rm -rf make-*
+        export PATH="~/bin:$PATH"
+        printf "Installing ccache\n"
+        brew install ccache
+        export PATH="/usr/local/opt/ccache/libexec:$PATH"
+        printf "Work begins here\n\n"
+        cd /Volumes/android
+        printf "Download repo binary\n"
+        mkdir -p ~/bin 2>/dev/null
+        export PATH="~/bin:/usr/local/bin:$PATH"
+        curl -sL https://storage.googleapis.com/git-repo-downloads/repo -o ~/bin/repo
+        chmod a+x ~/bin/repo
+        printf "Set env, github way\n"
+        echo "~/bin" >> $GITHUB_PATH
+        echo "/usr/local/opt/openjdk@8/bin" >> $GITHUB_PATH
+        echo "/usr/local/opt/ccache/libexec" >> $GITHUB_PATH
+        echo "JAVA_OPTS= -Xmx12G " >> $GITHUB_ENV
+
     # Either use ngrok method or tmate method
     - name: Start SSH via ngrok
       continue-on-error: true
@@ -38,8 +83,8 @@ jobs:
         # This password you will use when authorizing via SSH
         SSH_PASSWORD: ${{ secrets.SSH_PASSWORD }}
         # Send connection info to Telegram (optional)
-        #TELEGRAM_BOT_TOKEN: ${{ secrets.TELEGRAM_BOT_TOKEN }}
-        #TELEGRAM_CHAT_ID: ${{ secrets.TELEGRAM_CHAT_ID }}
+        TELEGRAM_BOT_TOKEN: ${{ secrets.TELEGRAM_BOT_TOKEN }}
+        TELEGRAM_CHAT_ID: ${{ secrets.TELEGRAM_CHAT_ID }}
     #- name: Start SSH via tmate
     #  uses: P3TERX/ssh2actions@main
     #  # Send connection info to Telegram (optional)
