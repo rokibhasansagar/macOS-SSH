@@ -23,9 +23,24 @@ jobs:
         git config --global color.ui true
         git config --global credential.helper store
         echo "https://${GitHubName}:${{ secrets.GH_TOKEN }}@github.com" > ~/.git-credentials
+    - name: System Specs
+      run: system_profiler SPHardwareDataType
+    - name: SSH Keepalive
+      run: |
+        mkdir -p ~/.ssh
+        cat << EOF > ~/.ssh/config
+        Host *
+            ServerAliveInterval 60
+            StrictHostKeyChecking no
+        Host github.com
+            User git
+            Port 22
+            Hostname github.com
+            TCPKeepAlive yes
+            IdentitiesOnly yes
+        EOF
     - name: Configure for android builds
       run: |
-        id
         printf "Creating SPARSE FS\n"
         sudo hdiutil create -type SPARSE -fs 'Case-sensitive Journaled HFS+' -size 220g ~/android.dmg.sparseimage
         sudo hdiutil attach ~/android.dmg.sparseimage -mountpoint /Volumes/android
@@ -93,11 +108,11 @@ jobs:
     #  env:
     #    TELEGRAM_BOT_TOKEN: ${{ secrets.TELEGRAM_BOT_TOKEN }}
     #    TELEGRAM_CHAT_ID: ${{ secrets.TELEGRAM_CHAT_ID }}
-    - name: Self Looping
-      run: |
-        git clone https://${GitHubName}:${{ secrets.GH_TOKEN }}@github.com/${GITHUB_REPOSITORY} loop
-        cd loop || exit 1
-        echo $(( RANDOM - ( RANDOM % RANDOM ) )) > looper.txt
-        git add looper.txt
-        git commit -m "Looping at $(date -u +%D-%T%P)"
-        git push -q https://${{ secrets.GH_TOKEN }}@github.com/${GITHUB_REPOSITORY} HEAD:main
+    #- name: Self Looping
+    #  run: |
+    #    git clone https://${GitHubName}:${{ secrets.GH_TOKEN }}@github.com/${GITHUB_REPOSITORY} loop
+    #    cd loop || exit 1
+    #    echo $(( RANDOM - ( RANDOM % RANDOM ) )) > looper.txt
+    #    git add looper.txt
+    #    git commit -m "Looping at $(date -u +%D-%T%P)"
+    #    git push -q https://${{ secrets.GH_TOKEN }}@github.com/${GITHUB_REPOSITORY} HEAD:main
